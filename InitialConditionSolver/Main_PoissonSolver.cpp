@@ -193,11 +193,15 @@ int poissonSolve(const Vector<DisjointBoxLayout> &a_grids,
         // Engage!
         solver.solve(dpsi, rhs);
 
+        set_unitarity_dpsi(*dpsi[0]);  // test
+
         // Add the solution to the linearised eqn to the previous iteration
         // ie psi -> psi + dpsi
         // need to fill interlevel and intralevel ghosts first in dpsi
         for (int ilev = 0; ilev < nlevels; ilev++)
         {
+
+            set_unitarity_dpsi(*dpsi[ilev]);  // test
 
             // For interlevel ghosts
             if (ilev > 0)
@@ -223,9 +227,16 @@ int poissonSolve(const Vector<DisjointBoxLayout> &a_grids,
                                 Interval(0, 0));
         pout() << "The norm of dpsi after step " << NL_iter + 1 << " is "
                << dpsi_norm << endl;
-        if (dpsi_norm < tolerance || dpsi_norm > 1e5)
+
+        if(NL_iter > 2){             // CJ added : check for diverging criteria
+                                     // on later steps 
+        if (dpsi_norm < tolerance || dpsi_norm > 1e5)    
         {
-            break;
+          // output the data to check the last solution
+          output_solver_data(dpsi, rhs, multigrid_vars, a_grids, a_params,
+                             NL_iter+1);
+          break;
+        }
         }
 
     } // end NL iteration loop

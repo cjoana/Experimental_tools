@@ -58,6 +58,12 @@ extern void set_update_psi0(LevelData<FArrayBox> &a_multigrid_vars,
                             LevelData<FArrayBox> &a_dpsi,
                             const Copier &a_exchange_copier);
 
+extern void set_unitarity_dpsi(
+                            //LevelData<FArrayBox> &a_multigrid_vars,
+                            LevelData<FArrayBox> &a_dpsi
+                            // , const Copier &a_exchange_copier
+                          );
+
 extern void set_output_data(LevelData<FArrayBox> &a_vars,
                             LevelData<FArrayBox> &a_multigrid_vars,
                             const PoissonParameters &a_params,

@@ -63,7 +63,7 @@ void set_initial_conditions(LevelData<FArrayBox> &a_multigrid_vars,
 
             // set phi according to user defined function
             multigrid_vars_box(iv, c_phi_0) =
-                my_phi_function(loc, a_params.phi_amplitude,
+                my_phi_function(loc, a_params.phi_background, a_params.phi_amplitude,
                                 a_params.phi_wavelength, a_params.domainLength);
 
             // set Aij for spin and momentum according to BH params
@@ -229,7 +229,7 @@ void set_regrid_condition(LevelData<FArrayBox> &a_condition,
             loc -= a_params.domainLength / 2.0;
 
             // calculate contributions
-            Real m = 0;
+            Real m = 0;    // m(K, rho) = 2/3K^2 - 16piG rho
             set_m_value(m, multigrid_vars_box(iv, c_phi_0), a_params, 0.0);
 
             // Also \bar  A_ij \bar A^ij
@@ -272,13 +272,48 @@ void set_update_psi0(LevelData<FArrayBox> &a_multigrid_vars,
 
         Box this_box = multigrid_vars_box.box();
         BoxIterator bit(this_box);
+
         for (bit.begin(); bit.ok(); ++bit)
         {
             IntVect iv = bit();
             multigrid_vars_box(iv, c_psi) += dpsi_box(iv, 0);
+
         }
     }
 }
+
+// CJ Regularisation of dpsi after the solver operates
+// CJ : The function name is confusing, we might want to change it 
+void set_unitarity_dpsi(LevelData<FArrayBox> &a_dpsi)
+{
+
+    DataIterator dit = a_dpsi.dataIterator();
+    for (dit.begin(); dit.ok(); ++dit)
+    {
+        FArrayBox &dpsi_box = a_dpsi[dit()];
+
+        Box this_box = dpsi_box.box();
+        BoxIterator bit(this_box);
+
+        Real mean = 0.0;
+        Real cnt = 0;
+        for (bit.begin(); bit.ok(); ++bit)
+        {
+            cnt++;
+            IntVect iv = bit();
+            mean += dpsi_box(iv, 0); //add2
+        }
+        mean =  mean/cnt;
+        for (bit.begin(); bit.ok(); ++bit)
+        {
+            IntVect iv = bit();
+            dpsi_box(iv, 0) += -mean; // add2
+        }
+    }
+}
+
+
+
 
 // m(K, rho) = 2/3K^2 - 16piG rho
 void set_m_value(Real &m, const Real &phi_here,
@@ -290,6 +325,15 @@ void set_m_value(Real &m, const Real &phi_here,
     // ... may want to add V(phi) and phidot/Pi here later though
     Real Pi_field = 0.0;
     Real V_of_phi = 0.0;
+
+    // CJ Starobinski potential
+    Real Mp = 1.0/sqrt(8.0*M_PI);  // CJ   for Starobinski potential
+    Real scalar_mass = 2.5e-12;    // CJ   for Starobinski potential
+    // CJ Starobinski potential
+    V_of_phi =  scalar_mass * pow(1.0*Mp, 4.0) *   
+         pow(1.0 - exp(-sqrt(2.0/3.0) * abs(phi_here) / Mp), 2.0); 
+
+
     Real rho = 0.5 * Pi_field * Pi_field + V_of_phi;
 
     m = (2.0 / 3.0) * (constant_K * constant_K) -
